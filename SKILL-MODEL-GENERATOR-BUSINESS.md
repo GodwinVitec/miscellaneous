@@ -1,10 +1,10 @@
 File name: SKILL-MODEL-GENERATOR-BUSINESS.md
 Language: 
 ---
-name: model-business
+name: model
 description: Convert business requirements from design/product teams into MongoDB Mongoose models for Node.js Express backend, translating business language into technical schema specifications
 user_invocable: true
-command: model-business
+command: model
 ---
 
 # Business Requirements to MongoDB Model Converter
