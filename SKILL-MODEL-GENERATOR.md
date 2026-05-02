@@ -11,63 +11,133 @@ command: model
 
 Generate Mongoose schemas and models for MongoDB collections in a Node.js + Express backend, following project conventions and layered architecture.
 
-## Pre-Flight Checklist (STOP GATE)
+## Input Requirements
 
-**NEVER work on assumptions. NEVER skip this checklist.**
+**BEFORE generating ANY code, request a requirements document from the user.**
 
-Before writing ANY code, ensure these core details are known. Only ask the user about what's genuinely unclear — derive everything else from the guidelines in this skill file.
+The user MUST provide a requirements document that specifies the data model. This document is the single source of truth for model generation.
 
-### Core Checklist (ask the user only for these)
+### Requirements Document Location
+
+Requirements documents are stored in the backend documentation structure:
+- **Standard path**: `api/docs/requirements/<entity-name>.md` or `api/docs/models/<entity-name>.md`
+- **Alternative paths**: `api/docs/<entity-name>-requirements.md` or `docs/api/<entity-name>-spec.md`
+
+### How to Request the Document
+
+If the user does NOT provide a requirements document path or content, ask them for it:
 
 ```
-- [ ] What is the entity/collection? (name + what data it represents)
-- [ ] What fields does it have? (names, types, constraints, relationships)
-- [ ] Any special business rules? (enums, defaults, validations, indexing strategies)
+I need a requirements document to generate the model accurately.
+
+Please provide the path to the requirements document. It should be located in your backend documentation, typically at:
+  - api/docs/requirements/<entity-name>.md
+  - api/docs/models/<entity-name>.md
+  - api/docs/<entity-name>-requirements.md
+
+Alternatively, you can paste the requirements content directly.
+
+The document should specify:
+  - Entity name and purpose
+  - All fields (names, types, constraints, defaults)
+  - Any business rules or special logic
+  - Relationships to other entities
+  - Indexing requirements
 ```
 
-**That's it.** Only these 3 items need explicit user input. Everything else — schema structure, validation rules, indexing, timestamps, relationships, instance methods, static methods — is generated automatically by following the rules in this skill file.
+### Requirements Document Format
 
-### What you derive (do NOT ask the user about these)
+The requirements document should include (at minimum):
 
-- Schema field types — map user descriptions to Mongoose types (String, Number, Boolean, Date, ObjectId, Array, etc.)
-- Required vs. optional — infer from context (e.g., email is required, phone is optional)
-- Validation rules — apply sensible constraints (min/max length, enums, custom validators)
-- Indexes — add indexes for frequently queried fields (searches, filters, sorting)
-- Timestamps — add `createdAt` and `updatedAt` by default
-- Relationships — use `ref` for document relationships, populate helpers
-- Instance methods — add helpers like `toJSON()` for response serialization
-- Static methods — add query helpers like `findActive()`, `countByStatus()`, etc.
-- Error handling — follow standard patterns (validation errors, not-found errors)
+```markdown
+# <Entity> Model Requirements
 
-### Jira Ticket Integration
+## Overview
+Brief description of what this entity represents and its purpose in the system.
 
-If the user provides a Jira ticket key (e.g., `PROJ-123`) or URL (e.g., `https://vitecgmbh.atlassian.net/browse/PROJ-123`):
+## Fields
+| Field Name | Type | Required | Unique | Default | Validation Rules | Notes |
+|-----------|------|----------|--------|---------|------------------|-------|
+| fieldName | String | Yes/No | Yes/No | value | min/max, pattern, enum | Additional context |
 
-1. **Extract the ticket key** from the input — parse it from the URL if a full URL is provided, or use the key directly
-2. **Fetch the ticket** using the Atlassian MCP tool:
-   ```
-   mcp__claude_ai_Atlassian__getJiraIssue with cloudId: "vitecgmbh.atlassian.net", issueKey: "<TICKET-KEY>"
-   ```
-3. **Extract from the ticket**: summary, description, acceptance criteria, subtasks, linked issues, custom fields (data model, entity fields, business rules)
-4. **Use the ticket content** as the model specification — acceptance criteria and descriptions map directly to what schema fields and validations are needed
-5. Run the core checklist against the extracted ticket content — if the 3 core items are still unclear, ask only about those gaps
+## Business Rules
+- Rule 1 description
+- Rule 2 description
+- Any special logic or constraints
 
-### When to ask vs. when to proceed
+## Relationships
+- 1-to-N relationships (e.g., "A User has many Orders")
+- N-to-N relationships (e.g., "Many Users belong to many Groups")
+- Embedded vs. referenced decision rationale
 
-**STOP and ask** — entity is too vague to identify required fields:
-- `/model product` — Ask: What fields does a product have (name, price, category, etc.)? What types?
-- `/model user` — Ask: What profile fields are needed? Authentication? Preferences?
+## Indexes
+| Fields | Type | Purpose |
+|--------|------|---------|
+| email | unique | User lookup |
+| status, createdAt | compound | Filter and sort |
 
-**Proceed to planning** — core checklist is clear, derive the rest:
-- `/model product with name (string), price (number), category (string), description (string), inStock (boolean), image (string), created by (user reference)`
-- `/model order with items (array of products), status (pending/processing/shipped/delivered), total (number), buyer (user reference), shipping address (object)`
-- `PROJ-123` (Jira ticket with clear entity definition and field list after fetching)
+## Instance Methods
+- toJSON() — describe custom serialization
+- isActive() — describe status check
+- Other methods specific to entity
 
-**Rules:**
-- Ask at most 2-3 focused questions, not a wall of 8+ questions
-- Present questions as a short numbered list and WAIT for answers
-- Do not mix questions with partial code generation
-- If in doubt about field types or constraints, ask. For everything else (indexes, timestamps, methods), follow the guidelines and decide
+## Static Methods
+- findActive() — describe query
+- findByEmail(email) — describe lookup
+- Other query helpers
+
+## Hooks
+- pre('save') — describe pre-save processing (hashing, normalization)
+- post('find') — describe post-find cleanup
+- Other hooks as needed
+
+## Example Documents
+Show 1-2 example JSON documents representing valid instances of this entity.
+
+## Notes
+Any additional implementation notes, migration concerns, or dependencies on other models.
+```
+
+---
+
+## Workflow: From Requirements to Implementation
+
+### 1. Validate the Requirements Document
+
+After receiving the requirements document:
+
+1. **Fetch or read the document** — retrieve it from the specified path in the repository or use the provided content
+2. **Validate completeness** — ensure it contains:
+   - Entity name and purpose (clear description of what the entity represents)
+   - Field definitions (names, types, constraints, defaults)
+   - Business rules (any non-obvious logic or workflows)
+   - Relationships (to other entities, normalized or embedded)
+   - Indexes (which fields need indexing and why)
+3. **Identify gaps** — if critical information is missing, ask ONLY for those specific gaps:
+   - Example: "The requirements don't specify if the 'email' field should be unique. Should it be?"
+   - Example: "Should the 'status' field be indexed for filtering?"
+4. **Do NOT iterate through a checklist** — extract information directly from the document without asking redundant questions
+
+### 2. Check for Existing Model
+
+Before generating anything, search for an existing model with the same name:
+- `api/src/models/<EntityName>.js` (Mongoose model file)
+
+### 3. Plan the Model (based on requirements)
+
+Outline what will be created based on ONLY the requirements document:
+- List all fields with types, constraints, and defaults
+- List all indexes and relationships
+- List all instance and static methods
+- Present the plan to the user and wait for confirmation before proceeding
+
+### 4. Generate Model Code
+
+Create: `api/src/models/<EntityName>.js`
+
+### 5. Generate Model Tests
+
+Create: `api/src/models/<EntityName>.test.js`
 
 ---
 
@@ -78,10 +148,10 @@ Before generating anything, check if a model with the same name already exists i
 
 ### If the model already exists:
 
-**1. Determine the type of request** — compare what the user is asking for against what already exists:
+**1. Determine the type of request** — compare what the requirements document asks for against what already exists:
 
 **Change Request (modify/enhance existing model):**
-The user wants to add fields, change types, add validations, add indexes, or enhance the existing model.
+The requirements ask to add fields, change types, add validations, add indexes, or enhance the existing model.
 
 - Read and understand the existing model completely
 - Make changes incrementally — modify the existing file, don't recreate from scratch
@@ -92,7 +162,7 @@ The user wants to add fields, change types, add validations, add indexes, or enh
 - Add a migration comment in the code documenting what changed and why
 
 **Complete Redefinition (entirely different entity with the same name):**
-The user's description is fundamentally different from what exists — different purpose, completely different field set.
+The requirements describe a fundamentally different entity — different purpose, completely different field set.
 
 - **STOP and warn the user** before proceeding. Present:
   ```
@@ -103,7 +173,7 @@ The user's description is fundamentally different from what exists — different
   - <summarize current indexes and methods>
   - <list validation rules>
 
-  Your request describes a completely different entity. Proceeding will REPLACE:
+  Your requirements describe a completely different entity. Proceeding will REPLACE:
   - <list of files/routes that depend on this model>
   - <list of API endpoints that will be affected>
 
@@ -117,22 +187,7 @@ The user's description is fundamentally different from what exists — different
 
 ### If the model does NOT exist:
 
-Proceed normally with the pre-flight checklist and planning steps.
-
----
-
-## Input
-
-The user provides a model/entity description. Examples:
-- `/model product with name, price, category, description`
-- `/model order with items array, status enum, buyer reference to user`
-- `/model blog-post with title, content, author reference, published boolean, tags array`
-
-Parse the description to determine:
-- **Entity name** (PascalCase for model class, kebab-case for file)
-- **Required fields**: names, types, constraints, relationships, defaults
-- **Indexes**: fields that need indexing for queries and sorting
-- **Methods**: instance and static helpers for common queries
+Proceed normally with model generation based on requirements.
 
 ---
 
@@ -143,6 +198,9 @@ Parse the description to determine:
 ```
 project-root/
   api/                         (Express backend, port 5000)
+    docs/                      (Documentation - requirements docs stored here)
+      requirements/            (Model requirements documents)
+      models/                  (Alternative location for requirements)
     src/
       models/                  (Mongoose schemas - THIS SKILL GENERATES HERE)
       repositories/            (Data access layer - use models)
@@ -486,6 +544,8 @@ If missing, install into the **root** `package.json` (shared `node_modules/` for
 2. **Create BE directory structure** — `api/` at the project root (no separate `package.json`):
    ```
    api/
+     docs/
+       requirements/            (Model requirements documents)
      src/
        models/                  (Models live here)
        routes/
@@ -563,28 +623,35 @@ If missing, install into the **root** `package.json` (shared `node_modules/` for
    };
    ```
 
-### 1. Plan the model
+### 1. Request and Validate Requirements Document
 
-Before writing any code, outline what will be created:
+- Ask the user for the requirements document path (typically `api/docs/requirements/<entity-name>.md`)
+- Fetch or read the document from the repository
+- Validate it contains all required information (entity name, fields, business rules, relationships, indexes)
+- Ask for clarification ONLY if critical information is missing
+
+### 2. Plan the Model (based on requirements)
+
+Before writing any code, outline what will be created based on ONLY the requirements document:
 - List the entity name and all fields (names, types, constraints, defaults)
 - List indexes needed for queries and sorting
 - List relationships to other entities
 - List instance and static methods for common operations
 - Present the plan to the user and wait for confirmation before proceeding
 
-### 2. Generate model code
+### 3. Generate model code
 
 Create a single model file: `api/src/models/<EntityName>.js`
 
 **Model generation rules:**
 
-- **Schema definition**: Define all fields with proper types, constraints, defaults, and validation rules
+- **Schema definition**: Define all fields with proper types, constraints, defaults, and validation rules based on requirements
 - **Timestamps**: Always include `timestamps: true` for `createdAt` and `updatedAt`
-- **Indexes**: Add indexes for frequently queried, filtered, or sorted fields
-- **Relationships**: Use `Schema.Types.ObjectId` with `ref` for references to other models
-- **Instance methods**: Add `.toJSON()` for safe serialization, add status check methods
-- **Static methods**: Add query helpers for common database operations
-- **Hooks**: Add `pre/post` hooks for automatic processing (hashing, normalization, validation)
+- **Indexes**: Add indexes as specified in requirements document
+- **Relationships**: Use `Schema.Types.ObjectId` with `ref` for references to other models as specified in requirements
+- **Instance methods**: Add `.toJSON()` for safe serialization, add status check methods as specified in requirements
+- **Static methods**: Add query helpers for common database operations as specified in requirements
+- **Hooks**: Add `pre/post` hooks for automatic processing (hashing, normalization, validation) as specified in requirements
 - **No hardcoding**: All constraint messages and validation rules should be descriptive and user-friendly
 
 **DO NOT:**
@@ -592,8 +659,9 @@ Create a single model file: `api/src/models/<EntityName>.js`
 - Include DB operations like `.find()` or `.save()` in instance methods — those go in repositories
 - Hardcode error messages — use descriptive validation error strings
 - Forget `.toJSON()` method — always implement it to exclude sensitive fields in API responses
+- Add fields or methods not specified in requirements document
 
-### 3. Generate model tests
+### 4. Generate model tests
 
 Create a test file: `api/src/models/<EntityName>.test.js`
 
@@ -864,6 +932,9 @@ After completing the model generation, you MUST provide a detailed summary. This
 ### Summary
 <2-3 sentences describing what entity was created, what it stores, and why>
 
+### Requirements Source
+Document path: `api/docs/requirements/<entity-name>.md`
+
 ### Schema Definition
 
 | Field | Type | Required | Unique | Default | Validation | Index |
@@ -972,7 +1043,7 @@ const json = user.toJSON();  // password is excluded
 - Include example usage showing how the model will be used
 - Decisions section must explain WHY, not just WHAT
 - Test coverage section must list what scenarios are covered
-- If a Jira ticket was used as input, reference the ticket key in the summary
+- Reference the requirements document path used as source
 
 ---
 
